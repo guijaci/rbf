@@ -95,7 +95,7 @@ def sigmoid_derivative(x):
 
 
 def rbf(x, c, s):
-    # Equivalente à (x - c)²/sigma, mas aplicado como uma operação entre matrizes
+    # Equivalente à -(x - c)²/sigma, mas aplicado como uma operação entre matrizes
     return np.exp(np.sum(-((x[..., np.newaxis] - c[np.newaxis, ...]) ** 2) / s[np.newaxis, ...], axis=1))
 
 
@@ -134,7 +134,8 @@ def training():
                       [.01, .01]])
 
     #Aplicando a RBF
-    x_p = np.hstack((np.ones((n_patterns, 1)), rbf(x, c, sigma)))
+    rbf_input = rbf(x, c, sigma)
+    x_p = np.hstack((np.ones((n_patterns, 1)), rbf_input))
     y_p = y
 
     w = []
