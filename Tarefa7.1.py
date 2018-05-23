@@ -2,6 +2,7 @@ import threading
 import time
 
 import matplotlib
+
 matplotlib.use("TkAgg")
 
 import matplotlib.animation as anim
@@ -10,11 +11,12 @@ import numpy as np
 from numpy.linalg import linalg
 
 MAX_ITER = 100000
-# Minimum of 2 elements, first is inputs, last is outputs
-NEURONS_BY_LAYER = [2, 1]
-ETA = .03
+# Minimum of 3 elements, first is inputs, second is RBF layer
+# and last is outputs
+NEURONS_BY_LAYER = [2, 4, 2, 1]
+ETA = .3
 ERROR_THRESHOLD = 0.1
-PATH = '/home/guilherme/PycharmProjects/rbf/data/xor.txt'
+PATH = 'data/xor.txt'
 GAMA = .9
 MOMENTUM = False
 
@@ -45,6 +47,7 @@ def animate(i):
 
 
 an = anim.FuncAnimation(fig, animate, interval=50, blit=False)
+plot.interactive(False)
 plot.show(block=False)
 
 
@@ -122,21 +125,46 @@ def load_dataset(path):
     return x, y, s
 
 
+def distance_graph(x, c):
+    return np.sqrt(np.sum((x[..., np.newaxis] - c[np.newaxis, ...]) ** 2, axis=1))
+
+
+def pertains_graph(d):
+    return
+
+
+def k_means_clustering(x, k):
+    dim = x.shape[1]
+    max = np.amax(x, axis=0)
+    min = np.amin(x, axis=0)
+    c = np.random.random((k, dim)) * (max - min) + min
+
+    d = distance_graph(x, c.T)
+
+    m = np.amax(d, axis=1)
+    u = pertains_graph(d)
+
+    return c.T
+
+
 def training():
     x, y, n_patterns = load_dataset(PATH)
 
+    c = k_means_clustering(x, NEURONS_BY_LAYER[1])
     # Parametro de centro para RBF
-    c = np.array([[1, 0],
-                  [0, 1]])
+    c = np.array([[0, 0, 1, 1],
+                  [0, 1, 0, 1]])
 
     # Vetor de dispersão
-    sigma = np.array([[.01, .01],
-                      [.01, .01]])
+    sigma = np.array([[.1, .1, .1, .1],
+                      [.1, .1, .1, .1]])
 
-    #Aplicando a RBF
+    # Aplicando a RBF
     rbf_input = rbf(x, c, sigma)
     x_p = np.hstack((np.ones((n_patterns, 1)), rbf_input))
     y_p = y
+
+    NEURONS_BY_LAYER.pop(0)
 
     w = []
 
