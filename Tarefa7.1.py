@@ -1,3 +1,5 @@
+import math
+import os
 import threading
 import time
 
@@ -16,7 +18,8 @@ MAX_ITER = 100000
 NEURONS_BY_LAYER = [2, 4, 2, 1]
 ETA = .3
 ERROR_THRESHOLD = 0.1
-PATH = 'data/xor.txt'
+THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
+PATH = os.path.join(THIS_FOLDER, 'data/xor.txt')
 GAMA = .9
 MOMENTUM = False
 
@@ -130,27 +133,43 @@ def distance_graph(x, c):
 
 
 def pertains_graph(d):
-    return
+    m = np.reshape(np.amin(d, axis=1), (-1, 1))
+    return (d == m) * 1
 
 
 def k_means_clustering(x, k):
     dim = x.shape[1]
-    max = np.amax(x, axis=0)
-    min = np.amin(x, axis=0)
-    c = np.random.random((k, dim)) * (max - min) + min
+    # Maximo de cada eixo (coluna)
+    axis_max = np.amax(x, axis=0)
+    # Minimo de cada eixo (coluna)
+    axis_min = np.amin(x, axis=0)
+    # Medias inicializadas aleatoriamente (dentro do maximo e minimo em cada eixo)
+    m = np.random.random((k, dim)) * (axis_max - axis_min) + axis_min
+    lm = None
 
-    d = distance_graph(x, c.T)
+    # Continua execucao ate nao haver mais alteração nas medias
+    while not np.array_equal(m, lm):
+        lm = m
+        # Grafo de distancia (pontos x -versus- medias m)
+        d = distance_graph(x, m.T)
+        # Matriz de pertinencia (pontos x -versus- medias m)
+        u = pertains_graph(d)
+        # Quantidade de pontos em cada grupo
+        n = np.sum(u, axis=0)
+        # Somatório das coordenadas dos pontos
+        s = np.dot(x.T, u)
+        # Calculo das centroides
+        c = (s / n).T
+        # Atualiza novas médias com centróides dos grupos encontrados
+        m = np.where(np.isnan(c), m, c)
 
-    m = np.amax(d, axis=1)
-    u = pertains_graph(d)
-
-    return c.T
+    return m.T
 
 
 def training():
     x, y, n_patterns = load_dataset(PATH)
 
-    c = k_means_clustering(x, NEURONS_BY_LAYER[1])
+    c = k_means_clustering(x,  NEURONS_BY_LAYER[1])
     # Parametro de centro para RBF
     c = np.array([[0, 0, 1, 1],
                   [0, 1, 0, 1]])
