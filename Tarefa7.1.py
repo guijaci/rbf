@@ -132,9 +132,18 @@ def distance_graph(x, c):
     return np.sqrt(np.sum((x[..., np.newaxis] - c[np.newaxis, ...]) ** 2, axis=1))
 
 
-def pertains_graph(d):
+def pertains_graph(x, c):
+    # Grafo de distancia (pontos x -versus- medias m)
+    d = distance_graph(x, c.T)
     m = np.reshape(np.amin(d, axis=1), (-1, 1))
-    return (d == m) * 1
+    return (d == m) * 1, d
+
+
+def farthest_graph(x, c):
+    u, d = pertains_graph(x, c.T)
+    g = u * d
+    m = np.reshape((np.amax(g, axis=0)), (-1, 1))
+    return (d == m) * 1, d, u
 
 
 def k_means_clustering(x, k):
@@ -150,10 +159,8 @@ def k_means_clustering(x, k):
     # Continua execucao ate nao haver mais alteração nas medias
     while not np.array_equal(m, lm):
         lm = m
-        # Grafo de distancia (pontos x -versus- medias m)
-        d = distance_graph(x, m.T)
         # Matriz de pertinencia (pontos x -versus- medias m)
-        u = pertains_graph(d)
+        u, d = pertains_graph(x, m)
         # Quantidade de pontos em cada grupo
         n = np.sum(u, axis=0)
         # Somatório das coordenadas dos pontos
@@ -165,28 +172,38 @@ def k_means_clustering(x, k):
 
     return m.T
 
-def CalculaSigmas(x, c):
-#existem duas formas de fazer o calculo:
-#Primeira: usando a média dos N vetores mais proximos =. sigma = 1/N somatorio ||centro mais proximo - vetores mais proximos||, N = vetores mais proximos
-#Segunda: pelo ponto mais distantes pertencentes ao cluster do centro Cj
-#A segunda e mais facil a implementacao
-#
-#1 - Recebe sigma e os centros
-#2 - dentro de um loop, calcula qual é o maior em ||centro - entradai || e atribui o maior para sigma
-#  repare que quem se altera é somente a entrada
-#3 - retorna sigma
 
-    return 0
+def dispersion(x, c):
+    # existem duas formas de fazer o calculo:
+    # Primeira: usando a média dos N vetores mais proximos =. sigma = 1/N somatorio ||centro mais proximo - vetores mais proximos||, N = vetores mais proximos
+    # Segunda: pelo ponto mais distantes pertencentes ao cluster do centro Cj
+    # A segunda e mais facil a implementacao
+    #
+    # 1 - Recebe sigma e os centros
+    # 2 - dentro de um loop, calcula qual é o maior em ||centro - entradai || e atribui o maior para sigma
+    #  repare que quem se altera é somente a entrada
+    # 3 - retorna sigma
+
+    # Matriz indica qual ponto x é o mais distante de cada grupo
+    f, _, _ = farthest_graph(x, c)
+    # Seleção do vetor mais distante
+    v = np.dot(x.T, f)
+    # Distância entre vetor e centro do grupo
+    d = np.abs(c - v)
+
+    s = np.where(d != 0, d, 0.1)
+    return s
 
 
 def training():
     x, y, n_patterns = load_dataset(PATH)
 
-    c = k_means_clustering(x,  NEURONS_BY_LAYER[1])
     # Parametro de centro para RBF
-  #  c = np.array([[0, 0, 1, 1],
-   #               [0, 1, 0, 1]])
+    c = k_means_clustering(x, NEURONS_BY_LAYER[1])
+    # c = np.array([[0, 0, 1, 1],
+    #               [0, 1, 0, 1]])
 
+    sigma = dispersion(x, c)
     # Vetor de dispersão
     sigma = np.array([[.1, .1, .1, .1],
                       [.1, .1, .1, .1]])
