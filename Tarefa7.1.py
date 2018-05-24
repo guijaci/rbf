@@ -165,14 +165,27 @@ def k_means_clustering(x, k):
 
     return m.T
 
+def CalculaSigmas(x, c):
+#existem duas formas de fazer o calculo:
+#Primeira: usando a média dos N vetores mais proximos =. sigma = 1/N somatorio ||centro mais proximo - vetores mais proximos||, N = vetores mais proximos
+#Segunda: pelo ponto mais distantes pertencentes ao cluster do centro Cj
+#A segunda e mais facil a implementacao
+#
+#1 - Recebe sigma e os centros
+#2 - dentro de um loop, calcula qual é o maior em ||centro - entradai || e atribui o maior para sigma
+#  repare que quem se altera é somente a entrada
+#3 - retorna sigma
+
+    return 0
+
 
 def training():
     x, y, n_patterns = load_dataset(PATH)
 
     c = k_means_clustering(x,  NEURONS_BY_LAYER[1])
     # Parametro de centro para RBF
-    c = np.array([[0, 0, 1, 1],
-                  [0, 1, 0, 1]])
+  #  c = np.array([[0, 0, 1, 1],
+   #               [0, 1, 0, 1]])
 
     # Vetor de dispersão
     sigma = np.array([[.1, .1, .1, .1],
