@@ -172,7 +172,6 @@ def k_means_clustering(x, k):
 
     return m.T
 
-
 def dispersion(x, c):
     # existem duas formas de fazer o calculo:
     # Primeira: usando a média dos N vetores mais proximos =. sigma = 1/N somatorio ||centro mais proximo - vetores mais proximos||, N = vetores mais proximos
@@ -194,7 +193,6 @@ def dispersion(x, c):
     s = np.where(d != 0, d, 0.1)
     return s
 
-
 def training():
     x, y, n_patterns = load_dataset(PATH)
 
@@ -205,8 +203,8 @@ def training():
 
     sigma = dispersion(x, c)
     # Vetor de dispersão
-    sigma = np.array([[.1, .1, .1, .1],
-                      [.1, .1, .1, .1]])
+    #sigma = np.array([[.1, .1, .1, .1],
+     #                 [.1, .1, .1, .1]])
 
     # Aplicando a RBF
     rbf_input = rbf(x, c, sigma)
