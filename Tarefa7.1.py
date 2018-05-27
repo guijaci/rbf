@@ -15,7 +15,7 @@ from numpy.linalg import linalg
 MAX_ITER = 100000
 # Minimum of 3 elements, first is inputs, second is RBF layer
 # and last is outputs
-NEURONS_BY_LAYER = [2, 4, 2, 1]
+NEURONS_BY_LAYER = [2, 4, 4, 1]
 ETA = .3
 ERROR_THRESHOLD = 0.1
 THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
@@ -140,10 +140,28 @@ def pertains_graph(x, c):
 
 
 def farthest_graph(x, c):
+    # Grafo de grupos
     u, d = pertains_graph(x, c.T)
+    # Marca zeros com -1 para evitar confusão na seleção de pontos com distância 0
+    u = np.where(u == 0, -1, u)
+    # Números positivos indicam distância do ponto até o centro do grupo
     g = u * d
-    m = np.reshape((np.amax(g, axis=0)), (-1, 1))
-    return (d == m) * 1, d, u
+    # Indice de linha do maior valor
+    # (é por causa desta linha que marcamos com números
+    # negativos distância de grupos não pertencentes, pois
+    # grupos de um único elemento tem distância zero, o que
+    # faria pontos de outros grupo serem selecionados caso
+    # tambem fossem marcados com 0)
+    m = np.argmax(g, axis=0)
+    # Indices de coluna dos grupos
+    n = np.arange(u.shape[1])
+    # Marca com 1 os pontos mais distante de cada grupo
+    f = np.zeros(np.shape(u))
+    f[m, n] = 1
+    # Matrix de pertinencia original
+    u = (u > 0) * 1
+    # Um grupo sem elementos não tera nenhum ponto selecionado por causa de f * u
+    return f * u, d, u
 
 
 def k_means_clustering(x, k):
@@ -172,6 +190,7 @@ def k_means_clustering(x, k):
 
     return m.T
 
+
 def dispersion(x, c):
     # existem duas formas de fazer o calculo:
     # Primeira: usando a média dos N vetores mais proximos =. sigma = 1/N somatorio ||centro mais proximo - vetores mais proximos||, N = vetores mais proximos
@@ -185,15 +204,24 @@ def dispersion(x, c):
 
     # Matriz indica qual ponto x é o mais distante de cada grupo
     f, _, _ = farthest_graph(x, c)
+
+    # Marcando com nan grupos vazios
+    n = np.sum(f, axis=0)
+    f = f / n
+
     # Seleção do vetor mais distante
     v = np.dot(x.T, f)
     # Distância entre vetor e centro do grupo
     d = np.abs(c - v)
 
-    s = np.where(d != 0, d, 0.1)
-    return s
+    # Disperação padrão para distância zero ou grupo vazio
+    s = np.where(np.logical_and(d != 0, np.logical_not(np.isnan(d))), d, 0.1)
+    # Aumenta em 20% area de dispersão para melhorar englobamento
+    return s * 1.2
+
 
 def training():
+    time.sleep(1)
     x, y, n_patterns = load_dataset(PATH)
 
     # Parametro de centro para RBF
@@ -201,10 +229,10 @@ def training():
     # c = np.array([[0, 0, 1, 1],
     #               [0, 1, 0, 1]])
 
-    sigma = dispersion(x, c)
     # Vetor de dispersão
-    #sigma = np.array([[.1, .1, .1, .1],
-     #                 [.1, .1, .1, .1]])
+    sigma = dispersion(x, c)
+    # sigma = np.array([[.1, .1, .1, .1],
+    #                  [.1, .1, .1, .1]])
 
     # Aplicando a RBF
     rbf_input = rbf(x, c, sigma)
@@ -360,4 +388,3 @@ def training():
 
 t = threading.Thread(target=training)
 t.start()
-time.sleep(1)
