@@ -13,7 +13,8 @@ import numpy as np
 from numpy.linalg import linalg
 
 MAX_ITER = 100000
-# Minimum of 3 elements, first is inputs, second is RBF layer
+# Minimum of 3 elements, first is inputs,
+# second is Kohonen dimensionality (root squared)
 # and last is outputs
 NEURONS_BY_LAYER = [2, 5, 4, 1]
 ETA = .3
@@ -128,10 +129,12 @@ def load_dataset(path):
     return x, y, s
 
 
+# Calcula grafo que relaciona a distância entre cada elemento de x e cada centroide de grupo c
 def distance_graph(x, c):
     return np.sqrt(np.sum((x[..., np.newaxis] - c[np.newaxis, ...]) ** 2, axis=1))
 
 
+# Calcula o grafo de pertinência (quais elementos de x pertencem ao grupo dos centróides c)
 def pertains_graph(x, c):
     # Grafo de distancia (pontos x -versus- medias m)
     d = distance_graph(x, c.T)
@@ -139,6 +142,7 @@ def pertains_graph(x, c):
     return (d == m) * 1, d
 
 
+# Calcula o grafo que indica os elementos de x mais distantes de cada centros c
 def farthest_graph(x, c):
     # Grafo de grupos
     u, d = pertains_graph(x, c.T)
@@ -164,6 +168,7 @@ def farthest_graph(x, c):
     return f * u, d, u
 
 
+#
 def k_means_clustering(x, k):
     dim = x.shape[1]
     # Maximo de cada eixo (coluna)
@@ -187,15 +192,23 @@ def k_means_clustering(x, k):
     return m.T
 
 
+# Calcula dispersão pela média das distâncias
 def dispersion_mean(x, c, u):
+    # Vetores de distância (padrões p x entradas i x clusters c)
     v = x[..., np.newaxis] - c[np.newaxis, ...]
+    # Rotaciona vetor de pertinencia u para ficar no formato de v (padrões p x 1 x clusters c)
     r = np.rot90(u[np.newaxis, ...], -1)
+    # Quantidade de elementos em cada grupo
     s = np.sum(u, axis=0)
+    # Seleciona a distância em cada eixo
     d = abs(r * v)
-    m = np.sum(d, axis=0)/s.reshape((1, -1))
-    return np.where(m > 0, m, .1)*1.2
+    # Média das distâncias
+    m = np.sum(d, axis=0) / s.reshape((1, -1))
+    # Aplica uma Disperção minima positiva diferente de 0
+    return np.where(m > 0, m, .1) * 1.2
 
 
+# Calcula dispersão pelo elemento mais distante
 def dispersion_max_elem(x, c):
     # existem duas formas de fazer o calculo:
     # Primeira: usando a média dos N vetores mais proximos =. sigma = 1/N somatorio ||centro mais proximo - vetores mais proximos||, N = vetores mais proximos
@@ -225,6 +238,7 @@ def dispersion_max_elem(x, c):
     return s * 1.2
 
 
+# Calcula as centroides de um grupo
 def group_centroid(x, u):
     # Quantidade de pontos em cada grupo
     n = np.sum(u, axis=0)
@@ -235,32 +249,52 @@ def group_centroid(x, u):
     return c
 
 
+# Calcula o gráfico de pertinência de cada grupo a partir dos padrões de entradas x e os pesos da rede de kohonen w
 def kohonen_clustering(x, w):
+    # Saída da rede dado os padrões de entrada
     y = np.dot(x, w)
+    # Indice dos neurônios com maior ativação por padrão
     m = np.argmax(y, axis=1)
+    # Mapeamento d dos neurônios m para um grupo n
     n = np.unique(m)
     d = dict({k: v for v, k in enumerate(n, 0)})
+    # Indice dos grupos
     j = np.array(list(map(lambda it: d[it], m)))
     i = np.arange(j.size)
+    # Matriz de pertinência dos grupos,
+    # ativo no indice dos grupos correspondentes dos neuronios vencedores para cada padrão
     u = np.zeros((j.size, n.size))
     u[i, j] = 1
     return u
 
 
+# Faz clusterização utilizando mapas de kohonen,
+# onde x são os padrões de entradas e k é a raiz quadrada da dimensão da rede
 def kohonen(x, k):
+    # Coeficiente de aprendizagem
     alpha = 0.08
+    # Número de padrões é o numero de linhas em x
     p = x.shape[0]
+    # Dimensão das entradas é o numero de colunas em x
     m = x.shape[1]
+    # Dimensão do mapa de kohonen
     n = k ** 2
+    # Inicialização da matriz de pesos
     w = np.random.random((m, n))
+    # Normalizando para cada neurônio
     w = w / np.sqrt(np.sum(w ** 2, axis=0))
 
+    # Treinamento da rede
     for epoch in range(1000):
+        # Saída da rede em relação para cada padrão de entrada
         y = np.dot(x, w)
+        # Indices dos neurônios vencedores na ativação de cada padrão
         i = np.arange(p)
         j = np.argmax(y, axis=1)
+        # Matriz de correlação entre padrões e os neurônios vencedores
         s = np.zeros((p, n))
         s[i, j] = 1
+        # Matriz de peso na vizinhança
         v = np.array(s)
         v += (np.roll(v, 1, axis=1) +
               np.roll(v, -1, axis=1) +
@@ -270,12 +304,18 @@ def kohonen(x, k):
               np.roll(v, -1, axis=1) +
               np.roll(v, k, axis=1) +
               np.roll(v, -k, axis=1)) * .5
+        # Normalização do máximo para 1 na matriz de vizinhanças
         h = np.amax(v)
         v /= h
+        # Pesos dos neurônios selecionados
         ws = np.dot(s, w.T)
+        # Correção em relação à cada padrão
         u = x - ws
+        # Correção para a neurônios selecionados e vizinhança
         d = np.dot(u.T, v)
+        # Aplica correção do treinamento
         w += alpha * d
+        # Normalização para cada neurônio
         # w = w / np.sqrt(np.sum(w ** 2, axis=0))
     return w
 
