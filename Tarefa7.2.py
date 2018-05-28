@@ -221,12 +221,12 @@ def dispersion(x, c):
 
 
 def kohonen(x, k):
-    alpha = 0.05
+    alpha = 0.08
     x = np.hstack((np.ones((x.shape[0], 1)), x))
     p = x.shape[0]
     m = x.shape[1]
     n = k**2
-    w = np.random.random((m, n)) * .2 - .1
+    w = np.random.random((m, n))
 
     for epoch in range(1000):
         y = np.dot(x, w)
@@ -234,6 +234,16 @@ def kohonen(x, k):
         j = np.argmax(y, axis=1)
         s = np.zeros((p, n))
         s[i, j] = 1
+        s += (np.roll(s,  1, axis=1) +
+              np.roll(s, -1, axis=1) +
+              np.roll(s,  k, axis=1) +
+              np.roll(s, -k, axis=1))*.5
+        s += (np.roll(s,  1, axis=1) +
+              np.roll(s, -1, axis=1) +
+              np.roll(s,  k, axis=1) +
+              np.roll(s, -k, axis=1))*.5
+        h = np.amax(s)
+        s /= h
         ws = np.dot(s, w.T)
         u = x - ws
         d = np.dot(u.T, s)
