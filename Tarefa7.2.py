@@ -179,19 +179,20 @@ def k_means_clustering(x, k):
         lm = m
         # Matriz de pertinencia (pontos x -versus- medias m)
         u, d = pertains_graph(x, m)
-        # Quantidade de pontos em cada grupo
-        n = np.sum(u, axis=0)
-        # Somatório das coordenadas dos pontos
-        s = np.dot(x.T, u)
         # Calculo das centroides
-        c = (s / n).T
+        c = group_centroid(x, u)
         # Atualiza novas médias com centróides dos grupos encontrados
         m = np.where(np.isnan(c), m, c)
 
     return m.T
 
 
-def dispersion(x, c):
+def dispersion_mean(x, c):
+    
+    return c
+
+
+def dispersion_max_elem(x, c):
     # existem duas formas de fazer o calculo:
     # Primeira: usando a média dos N vetores mais proximos =. sigma = 1/N somatorio ||centro mais proximo - vetores mais proximos||, N = vetores mais proximos
     # Segunda: pelo ponto mais distantes pertencentes ao cluster do centro Cj
@@ -220,13 +221,37 @@ def dispersion(x, c):
     return s * 1.2
 
 
+def group_centroid(x, u):
+    # Quantidade de pontos em cada grupo
+    n = np.sum(u, axis=0)
+    # Somatório das coordenadas dos pontos
+    s = np.dot(x.T, u)
+    # Calculo das centroides
+    c = (s / n).T
+    return c
+
+
+def kohonen_clustering(x, w):
+    x = np.hstack((np.ones((x.shape[0], 1)), x))
+    y = np.dot(x, w)
+    m = np.argmax(y, axis=1)
+    n = np.unique(m)
+    d = dict({k: v for v, k in enumerate(n, 0)})
+    j = np.array(list(map(lambda it: d[it], m)))
+    i = np.arange(j.size)
+    u = np.zeros((j.size, n.size))
+    u[i, j] = 1
+    return u
+
+
 def kohonen(x, k):
     alpha = 0.08
     x = np.hstack((np.ones((x.shape[0], 1)), x))
     p = x.shape[0]
     m = x.shape[1]
-    n = k**2
+    n = k ** 2
     w = np.random.random((m, n))
+    w = w / np.sqrt(np.sum(w ** 2, axis=0))
 
     for epoch in range(1000):
         y = np.dot(x, w)
@@ -234,20 +259,21 @@ def kohonen(x, k):
         j = np.argmax(y, axis=1)
         s = np.zeros((p, n))
         s[i, j] = 1
-        s += (np.roll(s,  1, axis=1) +
+        s += (np.roll(s, 1, axis=1) +
               np.roll(s, -1, axis=1) +
-              np.roll(s,  k, axis=1) +
-              np.roll(s, -k, axis=1))*.5
-        s += (np.roll(s,  1, axis=1) +
+              np.roll(s, k, axis=1) +
+              np.roll(s, -k, axis=1)) * .5
+        s += (np.roll(s, 1, axis=1) +
               np.roll(s, -1, axis=1) +
-              np.roll(s,  k, axis=1) +
-              np.roll(s, -k, axis=1))*.5
+              np.roll(s, k, axis=1) +
+              np.roll(s, -k, axis=1)) * .5
         h = np.amax(s)
         s /= h
         ws = np.dot(s, w.T)
         u = x - ws
         d = np.dot(u.T, s)
         w += alpha * d
+        w = w / np.sqrt(np.sum(w ** 2, axis=0))
     return w
 
 
@@ -255,15 +281,19 @@ def training():
     time.sleep(1)
     x, y, n_patterns = load_dataset(PATH)
 
-    k = kohonen(x, 5)
+    k = kohonen(x, NEURONS_BY_LAYER[1])
+    clusters = kohonen_clustering(x, k)
+
+    NEURONS_BY_LAYER[1] = clusters.shape[1]
 
     # Parametro de centro para RBF
-    c = k_means_clustering(x, NEURONS_BY_LAYER[1])
+    c = group_centroid(x, clusters)
+    # c = k_means_clustering(x, NEURONS_BY_LAYER[1])
     # c = np.array([[0, 0, 1, 1],
     #               [0, 1, 0, 1]])
 
     # Vetor de dispersão
-    sigma = dispersion(x, c)
+    sigma = dispersion_max_elem(x, c)
     # sigma = np.array([[.1, .1, .1, .1],
     #                  [.1, .1, .1, .1]])
 
