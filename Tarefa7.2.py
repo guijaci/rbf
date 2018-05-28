@@ -15,7 +15,7 @@ from numpy.linalg import linalg
 MAX_ITER = 100000
 # Minimum of 3 elements, first is inputs, second is RBF layer
 # and last is outputs
-NEURONS_BY_LAYER = [2, 4, 4, 1]
+NEURONS_BY_LAYER = [2, 5, 4, 1]
 ETA = .3
 ERROR_THRESHOLD = 0.1
 THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
@@ -187,9 +187,13 @@ def k_means_clustering(x, k):
     return m.T
 
 
-def dispersion_mean(x, c):
-    
-    return c
+def dispersion_mean(x, c, u):
+    v = x[..., np.newaxis] - c[np.newaxis, ...]
+    r = np.rot90(u[np.newaxis, ...], -1)
+    s = np.sum(u, axis=0)
+    d = abs(r * v)
+    m = np.sum(d, axis=0)/s.reshape((1, -1))
+    return np.where(m > 0, m, .1)*1.2
 
 
 def dispersion_max_elem(x, c):
@@ -232,7 +236,6 @@ def group_centroid(x, u):
 
 
 def kohonen_clustering(x, w):
-    x = np.hstack((np.ones((x.shape[0], 1)), x))
     y = np.dot(x, w)
     m = np.argmax(y, axis=1)
     n = np.unique(m)
@@ -246,7 +249,6 @@ def kohonen_clustering(x, w):
 
 def kohonen(x, k):
     alpha = 0.08
-    x = np.hstack((np.ones((x.shape[0], 1)), x))
     p = x.shape[0]
     m = x.shape[1]
     n = k ** 2
@@ -259,21 +261,22 @@ def kohonen(x, k):
         j = np.argmax(y, axis=1)
         s = np.zeros((p, n))
         s[i, j] = 1
-        s += (np.roll(s, 1, axis=1) +
-              np.roll(s, -1, axis=1) +
-              np.roll(s, k, axis=1) +
-              np.roll(s, -k, axis=1)) * .5
-        s += (np.roll(s, 1, axis=1) +
-              np.roll(s, -1, axis=1) +
-              np.roll(s, k, axis=1) +
-              np.roll(s, -k, axis=1)) * .5
-        h = np.amax(s)
-        s /= h
+        v = np.array(s)
+        v += (np.roll(v, 1, axis=1) +
+              np.roll(v, -1, axis=1) +
+              np.roll(v, k, axis=1) +
+              np.roll(v, -k, axis=1)) * .5
+        v += (np.roll(v, 1, axis=1) +
+              np.roll(v, -1, axis=1) +
+              np.roll(v, k, axis=1) +
+              np.roll(v, -k, axis=1)) * .5
+        h = np.amax(v)
+        v /= h
         ws = np.dot(s, w.T)
         u = x - ws
-        d = np.dot(u.T, s)
+        d = np.dot(u.T, v)
         w += alpha * d
-        w = w / np.sqrt(np.sum(w ** 2, axis=0))
+        # w = w / np.sqrt(np.sum(w ** 2, axis=0))
     return w
 
 
@@ -287,15 +290,10 @@ def training():
     NEURONS_BY_LAYER[1] = clusters.shape[1]
 
     # Parametro de centro para RBF
-    c = group_centroid(x, clusters)
-    # c = k_means_clustering(x, NEURONS_BY_LAYER[1])
-    # c = np.array([[0, 0, 1, 1],
-    #               [0, 1, 0, 1]])
+    c = group_centroid(x, clusters).T
 
     # Vetor de dispersão
-    sigma = dispersion_max_elem(x, c)
-    # sigma = np.array([[.1, .1, .1, .1],
-    #                  [.1, .1, .1, .1]])
+    sigma = dispersion_mean(x, c, clusters)
 
     # Aplicando a RBF
     rbf_input = rbf(x, c, sigma)
