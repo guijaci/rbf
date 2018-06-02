@@ -12,10 +12,10 @@ import matplotlib.pyplot as plot
 import numpy as np
 from numpy.linalg import linalg
 
-MAX_ITER = 100000
+MAX_ITER = 10000
 # Minimum of 3 elements, first is inputs, second is RBF layer
 # and last is outputs
-NEURONS_BY_LAYER = [2, 4, 4, 1]
+NEURONS_BY_LAYER = [2, 4, 2, 1]
 ETA = .3
 ERROR_THRESHOLD = 0.1
 THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
@@ -68,11 +68,11 @@ def norm(x):
 
 
 def transfer_f(x):
-    return linear_tf(x)
+    return sigmoid(x)
 
 
 def derivative_tf(x):
-    return linear_derivative(x)
+    return sigmoid_derivative(x)
 
 
 def step_tf(x):

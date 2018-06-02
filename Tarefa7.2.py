@@ -16,7 +16,7 @@ MAX_ITER = 100000
 # Minimum of 3 elements, first is inputs,
 # second is Kohonen dimensionality (root squared)
 # and last is outputs
-NEURONS_BY_LAYER = [2, 5, 4, 1]
+NEURONS_BY_LAYER = [2, 5, 2, 1]
 ETA = .3
 ERROR_THRESHOLD = 0.1
 THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
@@ -69,11 +69,11 @@ def norm(x):
 
 
 def transfer_f(x):
-    return linear_tf(x)
+    return sigmoid(x)
 
 
 def derivative_tf(x):
-    return linear_derivative(x)
+    return sigmoid_derivative(x)
 
 
 def step_tf(x):
